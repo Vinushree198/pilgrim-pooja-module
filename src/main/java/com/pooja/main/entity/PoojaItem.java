@@ -3,6 +3,9 @@ package com.pooja.main.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "pooja_items")
@@ -52,11 +55,16 @@ public class PoojaItem {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    // Constructors
+    // ----------------- Delivery Restrictions -----------------
+    // Comma-separated allowed cities/states, e.g., "Karnataka,Bangalore"
+    @Column(name = "delivery_states")
+    private String deliveryStates;
+
+    // ----------------- Constructors -----------------
     public PoojaItem() {}
 
     public PoojaItem(String name, String category, BigDecimal price, Integer stock,
-                     String description, String imagePath, Vendor vendor) {
+                     String description, String imagePath, Vendor vendor, String deliveryStates) {
         this.name = name;
         this.category = category;
         this.price = price;
@@ -64,113 +72,73 @@ public class PoojaItem {
         this.description = description;
         this.imagePath = imagePath;
         this.vendor = vendor;
+        this.deliveryStates = deliveryStates;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
-    public Long getId() {
-        return id;
+    // ----------------- Getters and Setters -----------------
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
+
+    public Integer getReservedStock() { return reservedStock; }
+    public void setReservedStock(Integer reservedStock) { this.reservedStock = reservedStock; }
+
+    public Integer getSoldStock() { return soldStock; }
+    public void setSoldStock(Integer soldStock) { this.soldStock = soldStock; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getImagePath() { return imagePath; }
+    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
+
+    public ItemStatus getStatus() { return status; }
+    public void setStatus(ItemStatus status) { this.status = status; }
+
+    public Vendor getVendor() { return vendor; }
+    public void setVendor(Vendor vendor) { this.vendor = vendor; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getDeliveryStates() { return deliveryStates; }
+    public void setDeliveryStates(String deliveryStates) { this.deliveryStates = deliveryStates; }
+
+    // ----------------- Helper Methods -----------------
+    /**
+     * Check if the item can be delivered to the given city or state.
+     */
+    public boolean isDeliverableTo(String cityOrState) {
+        if (deliveryStates == null || deliveryStates.trim().isEmpty()) return false;
+        List<String> allowed = Arrays.stream(deliveryStates.split(","))
+                                     .map(String::trim)
+                                     .collect(Collectors.toList());
+        return allowed.stream().anyMatch(loc -> loc.equalsIgnoreCase(cityOrState));
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public Integer getStock() {
-        return stock;
-    }
-
-    public void setStock(Integer stock) {
-        this.stock = stock;
-    }
-
-    public Integer getReservedStock() {
-        return reservedStock;
-    }
-
-    public void setReservedStock(Integer reservedStock) {
-        this.reservedStock = reservedStock;
-    }
-
-    public Integer getSoldStock() {
-        return soldStock;
-    }
-
-    public void setSoldStock(Integer soldStock) {
-        this.soldStock = soldStock;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getImagePath() {
-        return imagePath;
-    }
-
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
-    }
-
-    public ItemStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ItemStatus status) {
-        this.status = status;
-    }
-
-    public Vendor getVendor() {
-        return vendor;
-    }
-
-    public void setVendor(Vendor vendor) {
-        this.vendor = vendor;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    /**
+     * Get a list of allowed delivery locations.
+     */
+    public List<String> getAllowedDeliveryLocations() {
+        if (deliveryStates == null || deliveryStates.trim().isEmpty()) return List.of();
+        return Arrays.stream(deliveryStates.split(","))
+                     .map(String::trim)
+                     .collect(Collectors.toList());
     }
 }
-

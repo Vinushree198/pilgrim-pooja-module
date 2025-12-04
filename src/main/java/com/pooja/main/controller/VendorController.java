@@ -209,7 +209,7 @@ public class VendorController {
         }
     }
 
-    @PostMapping("/items/delete/{id}")
+    @GetMapping("/items/delete/{id}")
     public String deleteItem(@PathVariable Long id, HttpSession session) {
         Vendor vendor = (Vendor) session.getAttribute("vendor");
         if (vendor == null) {

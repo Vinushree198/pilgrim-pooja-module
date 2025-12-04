@@ -87,17 +87,7 @@ public class CustomerController {
         return "customer/dashboard";
     }
 
-  /*  @GetMapping("/items")
-    public String browseItems(HttpSession session, Model model) {
-        Customer customer = (Customer) session.getAttribute("customer");
-        if (customer == null) {
-            return "redirect:/customer/login";
-        }
-        List<PoojaItem> items = poojaItemService.getAllActiveItems();
-        model.addAttribute("items", items);
-        return "customer/items";
-    }
-*/
+  
     @GetMapping("/items")
     public String browseItems(HttpSession session, 
                               @RequestParam(required = false) String search,
@@ -226,7 +216,7 @@ public class CustomerController {
 
 
  // ======================= PLACE ORDER (COD / ONLINE) ===========================
-    @PostMapping("/checkout")
+ /*  @PostMapping("/checkout")
     public String placeOrder(@RequestParam String shippingAddress,
                              @RequestParam String paymentMethod,
                              HttpSession session, Model model) {
@@ -251,8 +241,110 @@ public class CustomerController {
         model.addAttribute("success", "Order placed successfully! Order No: " + order.getOrderNumber());
         return "customer/order-success";
     }
+*/
+    @PostMapping("/checkout")
+    public String placeOrder(@RequestParam String address,
+                             @RequestParam String city,
+                             @RequestParam String state,
+                             @RequestParam String paymentMethod,
+                             HttpSession session, Model model) {
 
+        Customer customer = (Customer) session.getAttribute("customer");
+        if (customer == null) return "redirect:/customer/login";
 
+        List<Cart> cartItems = cartService.getCustomerCart(customer.getId());
+
+        if (cartItems.isEmpty()) {
+            model.addAttribute("errorMsg", "Your cart is empty.");
+            return "customer/checkout";
+        }
+
+        // Check delivery locations
+        boolean allItemsAvailable = true;
+        StringBuilder unavailableItems = new StringBuilder();
+        
+        // Default expected delivery date
+        java.time.LocalDate localExpectedDate = java.time.LocalDate.now();
+
+        for (Cart cart : cartItems) {
+            PoojaItem item = cart.getItem();
+            String allowedLocations = item.getDeliveryStates(); // e.g., "Karnataka,Bangalore"
+            if (allowedLocations == null || allowedLocations.isEmpty()) {
+                allowedLocations = "Karnataka,Bangalore"; // default if null
+            }
+
+            String[] allowed = allowedLocations.split(",");
+            boolean available = false;
+            for (String loc : allowed) {
+                if (loc.equalsIgnoreCase(city) || loc.equalsIgnoreCase(state)) {
+                    available = true;
+                    break;
+                }
+            }
+
+            if (!available) {
+                allItemsAvailable = false;
+                unavailableItems.append(item.getName()).append(", ");
+            }
+
+            // Calculate expected delivery date (pick the max delay if multiple items)
+            java.time.LocalDate itemExpectedDate;
+            if (city.equalsIgnoreCase("Bangalore")) {
+                itemExpectedDate = java.time.LocalDate.now().plusDays(2);
+            } else if (state.equalsIgnoreCase("Karnataka")) {
+                itemExpectedDate = java.time.LocalDate.now().plusDays(5);
+            } else {
+                itemExpectedDate = java.time.LocalDate.now().plusDays(7);
+            }
+
+            if (itemExpectedDate.isAfter(localExpectedDate)) {
+                localExpectedDate = itemExpectedDate;
+            }
+        }
+
+        // Convert LocalDate to java.util.Date for JSP
+        java.util.Date expectedDate = java.util.Date.from(
+                localExpectedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+        );
+
+        if (!allItemsAvailable) {
+            model.addAttribute("errorMsg", "Item(s) not available for this location: " +
+                    unavailableItems.toString() + "Allowed locations: Bangalore/Karnataka");
+            model.addAttribute("expectedDate", expectedDate);
+            model.addAttribute("cartItems", cartItems);
+            return "customer/checkout"; // return to checkout page
+        }
+
+        String fullAddress = address + ", " + city + ", " + state;
+        session.setAttribute("shippingAddress", fullAddress);
+
+        // Online payment
+        if (paymentMethod.equalsIgnoreCase("ONLINE")) {
+            session.setAttribute("expectedDate", expectedDate);
+            Order order = orderService.createOrder(customer.getId(), fullAddress, Order.PaymentMethod.ONLINE);
+            return "redirect:/customer/payment?orderId=" + order.getOrderNumber();
+        }
+
+        // COD
+      /*  Order order = orderService.createOrder(customer.getId(), fullAddress, Order.PaymentMethod.COD);
+        cartService.clearCart(customer.getId());
+
+        model.addAttribute("success", "Order placed successfully! Order No: " + order.getOrderNumber());
+        model.addAttribute("expectedDate", expectedDate);
+
+        return "customer/order-success";
+    }*/
+     // COD
+        Order order = orderService.createOrder(customer.getId(), fullAddress, Order.PaymentMethod.COD);
+        cartService.clearCart(customer.getId());
+
+        // store expected date in session
+        session.setAttribute("expectedDate", expectedDate);
+
+        return "redirect:/customer/order-success?order=" + order.getOrderNumber();
+    }
+
+    
     // ======================= LOAD PAYMENT PAGE ===========================
     @GetMapping("/payment")
     public String paymentPage(@RequestParam String orderId, Model model) {
@@ -324,18 +416,30 @@ public class CustomerController {
     }
 
     @GetMapping("/order-success")
-    public String orderSuccess(@RequestParam("order") String orderNumber, Model model) {
+    public String orderSuccess(@RequestParam("order") String orderNumber,
+                               Model model,
+                               HttpSession session) {   // <-- Added here
 
         Order orderDetails = orderService.getOrderByOrderNumber(orderNumber);
 
-        if(orderDetails == null) {
+        if (orderDetails == null) {
             model.addAttribute("msg", "Invalid Order Number!");
-            return "errorPage";  // create optional error.jsp
+            return "errorPage"; 
         }
 
         model.addAttribute("order", orderDetails);
+
+        // Retrieve expected delivery date stored during checkout
+        Object expected = session.getAttribute("expectedDate");
+        if (expected != null) {
+            model.addAttribute("expectedDate", expected);
+            session.removeAttribute("expectedDate"); // Clear after showing once
+        }
+
         return "customer/order-success";
     }
+
+    
 //-----------------cancel order------------//
  // Cancel order with reason
     @PostMapping("/orders/cancel/{orderNumber}")

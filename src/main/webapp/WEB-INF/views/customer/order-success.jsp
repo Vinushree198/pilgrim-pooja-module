@@ -3,6 +3,14 @@
 <c:set var="pageTitle" value="Order Success" />
 <c:set var="navLinks" value='<a href="${pageContext.request.contextPath}/customer/dashboard">Dashboard</a><a href="${pageContext.request.contextPath}/customer/items">Browse Items</a><a href="${pageContext.request.contextPath}/customer/orders">Orders</a><a href="${pageContext.request.contextPath}/customer/logout">Logout</a>' />
 <%@ include file="../common/header.jsp" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+
+<c:if test="${not empty expectedDate}">
+    <h3 style="color:green;">
+        Expected Delivery Date:
+        <fmt:formatDate value="${expectedDate}" pattern="dd MMM yyyy"/>
+    </h3>
+</c:if>
 
 <div class="card" style="text-align: center; max-width: 600px; margin: 2rem auto;">
     <h2 style="color: #27ae60;">✓ Order Placed Successfully!</h2>
